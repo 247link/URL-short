@@ -225,26 +225,23 @@ const Archives = () => {
     if (!confirm('Are you sure you want to permanently delete this link? This action cannot be undone.')) {
       return;
     }
-
+  
     try {
-      // Delete all related data first
-      await supabase.from('clicks').delete().eq('link_id', link.id);
-      await supabase.from('analytics_daily').delete().eq('link_id', link.id);
-      
-      // Delete the link itself
-      const { error } = await supabase
-        .from('links')
-        .delete()
-        .eq('id', link.id);
-
+      const { data, error } = await supabase.functions.invoke('delete-link', {
+        body: {
+          ids: [link.id],
+        },
+      });
+  
       if (error) throw error;
-
+  
       toast({
         title: "Success",
         description: "Link deleted permanently",
       });
-
+  
       fetchArchivedLinks();
+      return data;
     } catch (error) {
       console.error('Error deleting link:', error);
       toast({
@@ -252,6 +249,7 @@ const Archives = () => {
         description: "Failed to delete link",
         variant: "destructive",
       });
+      throw error;
     }
   };
 

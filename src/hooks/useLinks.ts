@@ -341,10 +341,13 @@ export const useLinks = () => {
 
   const deleteLink = async (linkId: string) => {
     try {
-      const { error } = await supabase
-        .from('links')
-        .delete()
-        .eq('id', linkId);
+      setLoading(true);
+
+      const { data, error } = await supabase.functions.invoke('delete-link', {
+        body: {
+          ids: [linkId],
+        },
+      });
 
       if (error) throw error;
 
@@ -353,8 +356,8 @@ export const useLinks = () => {
         description: "Link deleted successfully",
       });
 
-      // Refresh links list
       await fetchLinks();
+      return data;
     } catch (error) {
       console.error('Error deleting link:', error);
       toast({
@@ -362,6 +365,46 @@ export const useLinks = () => {
         description: "Failed to delete link",
         variant: "destructive",
       });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateLink = async (linkId: string, updateData: any) => {
+    try {
+      setLoading(true);
+  
+      const { data, error } = await supabase.functions.invoke("update-link", {
+        body: {
+          id: linkId,
+          ...updateData
+        }
+      });
+  
+      if (error) throw error;
+  
+      toast({
+        title: "Success!",
+        description: "Link updated successfully",
+      });
+  
+      await fetchLinks();
+  
+      return data;
+  
+    } catch (error) {
+      console.error("Error updating link:", error);
+  
+      toast({
+        title: "Error",
+        description: "Failed to update link",
+        variant: "destructive",
+      });
+  
+      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -440,6 +483,7 @@ export const useLinks = () => {
     prevPage,
     shortenUrl,
     deleteLink,
+    updateLink,
     refreshLinks: fetchLinks
   };
 };

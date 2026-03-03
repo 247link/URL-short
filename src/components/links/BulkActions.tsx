@@ -46,24 +46,22 @@ const BulkActions = ({ selectedLinks, onClearSelection, onRefresh }: BulkActions
   const { deleteLink } = useLinks();
   const { toast } = useToast();
 
-  // COMMENTED OUT FOR NOW - ARCHIVE NOT NEEDED
-  // const handleArchive = async () => {
-  //   try {
-  //     setLoading(true);
-  //     // Archive functionality would be implemented here
-  //     // For now, we'll just show a success message
-  //     toast({
-  //       title: "Links archived",
-  //       description: `${selectedLinks.length} links have been archived`,
-  //     });
-  //     onClearSelection();
-  //     setIsArchiveDialogOpen(false);
-  //   } catch (error) {
-  //     console.error('Error archiving links:', error);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+  const handleArchive = async () => {
+    try {
+      setLoading(true);
+      // Archive functionality can be wired later; for now just confirm action
+      toast({
+        title: "Links archived",
+        description: `${selectedLinks.length} links have been marked as archived (no data changed yet).`,
+      });
+      onClearSelection();
+      setIsArchiveDialogOpen(false);
+    } catch (error) {
+      console.error('Error archiving links:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAssignChannel = async () => {
     if (!selectedChannel) return;

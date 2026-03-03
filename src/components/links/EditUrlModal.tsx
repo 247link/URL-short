@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { format, subDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useLinks } from '@/hooks/useLinks';
 
 interface EditUrlModalProps {
   isOpen: boolean;
@@ -22,7 +23,7 @@ interface EditUrlModalProps {
 export default function EditUrlModal({ isOpen, onClose, link, onUpdate }: EditUrlModalProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  
+  const { updateLink } = useLinks();
   // Settings state
   const [settings, setSettings] = useState({
     customDomain: false,
@@ -258,12 +259,7 @@ export default function EditUrlModal({ isOpen, onClose, link, onUpdate }: EditUr
       }
 
       // Update the link in database
-      const { error } = await supabase
-        .from('links')
-        .update(updateData)
-        .eq('id', link.id);
-
-      if (error) throw error;
+      await updateLink(link.id, updateData);
 
       toast({
         title: "Success",

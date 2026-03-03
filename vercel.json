@@ -6,11 +6,11 @@
     },
     {
       "source": "/s/:shortCode",
-      "destination": "/api/s/:shortCode"
+      "destination": "https://ozkuefljvpzpmbrkknfw.supabase.co/functions/v1/track-click?code=:shortCode"
     },
     {
       "source": "/:shortCode([a-zA-Z0-9_-]{3,15})",
-      "destination": "/api/s/:shortCode"
+      "destination": "https://ozkuefljvpzpmbrkknfw.supabase.co/functions/v1/track-click?code=:shortCode"
     },
     {
       "source": "/reset-password",

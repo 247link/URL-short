@@ -103,7 +103,7 @@ const AppRoutes = () => {
         <Route path="/auth" element={user ? <Navigate to="/" replace /> : <AuthPage />} />
         <Route path="/password/:shortCode" element={<PasswordPage />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/s/:shortCode" element={<Redirect />} />
+        {/* <Route path="/s/:shortCode" element={<Redirect />} /> */}
         <Route path="/statistics/:linkId" element={<Statistics />} />
         <Route path="/statistics" element={<GlobalStatistics />} />
         <Route path="/archives" element={<Archives />} />
@@ -112,7 +112,7 @@ const AppRoutes = () => {
           element={user ? <Index /> : <AuthPage />} 
         />
         {/* Custom domain short links (e.g., 247l.ink/H44F2U) - Must be LAST before NotFound */}
-        <Route path="/:shortCode" element={<Redirect />} />
+        {/* <Route path="/:shortCode" element={<Redirect />} /> */}
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

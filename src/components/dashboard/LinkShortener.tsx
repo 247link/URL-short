@@ -78,7 +78,7 @@ const LinkShortener = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   
   const { toast } = useToast();
-  const { links, loading, shortenUrl, refreshLinks, page, hasMore, nextPage, prevPage } = useLinks();
+  const { links, loading, shortenUrl, refreshLinks } = useLinks();
 
   // Track when data was last updated
   useEffect(() => {
@@ -648,7 +648,7 @@ const LinkShortener = () => {
     link.original_url.toLowerCase().includes(searchTerm.toLowerCase()) ||
     link.short_url.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (link.title && link.title.toLowerCase().includes(searchTerm.toLowerCase()))
-  ); // useLinks already limits to 30 per page
+  );
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 lg:gap-6 xl:gap-6 animate-fade-in">
@@ -884,8 +884,9 @@ const LinkShortener = () => {
           onClearSelection={clearSelection}
           onRefresh={refreshLinks}
         />
-        
-        <div className="divide-y divide-card-border">
+
+        {/* Keep the page height sane on mobile by scrolling the list */}
+        <div className="max-h-[70vh] overflow-y-auto divide-y divide-card-border sm:max-h-none sm:overflow-visible">
           {filteredLinks.length === 0 ? (
             <div className="p-8 text-center">
               <LinkIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -896,7 +897,7 @@ const LinkShortener = () => {
           ) : (
             <>
               {/* Select All */}
-              <div className="p-4 border-b border-card-border">
+              <div className="sticky top-0 z-10 bg-card/95 backdrop-blur p-4 border-b border-card-border">
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="select-all"
@@ -1082,18 +1083,6 @@ const LinkShortener = () => {
                   </div>
                 </div>
               ))}
-              {/* Pagination */}
-              <div className="p-4 flex items-center justify-between">
-                <div className="text-xs text-muted-foreground">Page {page}</div>
-                <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm" onClick={prevPage} disabled={page === 1}>
-                    Previous
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={nextPage} disabled={!hasMore}>
-                    Next
-                  </Button>
-                </div>
-              </div>
             </>
           )}
         </div>

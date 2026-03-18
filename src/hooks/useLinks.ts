@@ -57,9 +57,10 @@ export interface LinkSettings {
 export const useLinks = () => {
   const [links, setLinks] = useState<Link[]>([]);
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(30);
-  const [hasMore, setHasMore] = useState(false);
+  // Pagination removed (dashboard shows all user links)
+  const [page] = useState(1);
+  const [pageSize] = useState(0);
+  const [hasMore] = useState(false);
   const [lastRefresh, setLastRefresh] = useState(Date.now());
   const { toast } = useToast();
   
@@ -149,7 +150,6 @@ export const useLinks = () => {
   const fetchLinks = async (showLogs = false, pageArg?: number) => {
     try {
       setLoading(true);
-      const currentPage = pageArg ?? page;
       
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
@@ -164,16 +164,12 @@ export const useLinks = () => {
         console.log('Fetching links for user:', user.id);
       }
       
-      // Get links for current user only (exclude archived) with pagination
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
       const result = await (supabase as any)
         .from('links')
         .select('id, original_url, short_code, short_url, title, status, created_at, expires_at, analytics_enabled')
         .eq('user_id', user.id)
         .eq('is_archived', false)
-        .order('created_at', { ascending: false })
-        .range(from, to);
+        .order('created_at', { ascending: false });
       
       const { data: linksData, error: linksError } = result;
 
@@ -182,53 +178,83 @@ export const useLinks = () => {
         throw linksError;
       }
 
-      // Process links to include total click counts from actual clicks table
-      const processedLinks = await Promise.all(linksData?.map(async (link) => {
-        // Get actual click counts from clicks table
-        const { data: clicksData, error: clicksError } = await supabase
-          .from('clicks')
-          .select('id, ip_address, clicked_at')
-          .eq('link_id', link.id)
-          .order('clicked_at', { ascending: false });
-        
-        if (clicksError) {
-          console.error(`Error fetching clicks for link ${link.short_code}:`, clicksError);
+      const baseLinks = linksData || [];
+      const linkIds = baseLinks.map((l: any) => l.id).filter(Boolean);
+
+      if (linkIds.length === 0) {
+        setLinks([]);
+        return;
+      }
+
+      // Fetch clicks for all links in one query (avoids N+1 queries)
+      const { data: clicksData, error: clicksError } = await supabase
+        .from("clicks")
+        .select("link_id, ip_address, created_at")
+        .in("link_id", linkIds)
+        .order("created_at", { ascending: false });
+
+      if (clicksError) {
+        console.error("Error fetching clicks for links:", clicksError);
+      }
+
+      const today = new Date().toISOString().split("T")[0];
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+      type LinkAgg = {
+        total: number;
+        uniqueIPs: Set<string>;
+        today: number;
+        yesterday: number;
+        lastClick: string | null;
+      };
+
+      const aggByLink = new Map<string, LinkAgg>();
+      for (const c of (clicksData || []) as any[]) {
+        const linkId = c.link_id as string | null;
+        if (!linkId) continue;
+
+        let agg = aggByLink.get(linkId);
+        if (!agg) {
+          agg = { total: 0, uniqueIPs: new Set<string>(), today: 0, yesterday: 0, lastClick: null };
+          aggByLink.set(linkId, agg);
         }
-        
-        const totalClicks = clicksData?.length || 0;
-        
-        // Calculate unique clicks based on IP address
-        const uniqueIPs = new Set(clicksData?.map(click => click.ip_address).filter(Boolean) || []);
-        const uniqueClicks = uniqueIPs.size;
-        
-        // Calculate today's and yesterday's clicks
-        const today = new Date().toISOString().split('T')[0];
-        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        
-        const todayClicks = clicksData?.filter(click => 
-          click.clicked_at?.startsWith(today)
-        ).length || 0;
-        
-        const yesterdayClicks = clicksData?.filter(click => 
-          click.clicked_at?.startsWith(yesterday)
-        ).length || 0;
-        
-        // Get the most recent click time
-        const lastClickTime = clicksData?.[0]?.clicked_at || null;
-        
+
+        agg.total += 1;
+
+        const ip = (c.ip_address || "").toString();
+        if (ip) agg.uniqueIPs.add(ip);
+
+        const createdAt = (c.created_at || "").toString();
+        if (createdAt) {
+          if (!agg.lastClick) agg.lastClick = createdAt; // data is ordered desc
+          if (createdAt.startsWith(today)) agg.today += 1;
+          if (createdAt.startsWith(yesterday)) agg.yesterday += 1;
+        }
+      }
+
+      const processedLinks: Link[] = baseLinks.map((link: any) => {
+        const agg = aggByLink.get(link.id);
+        const totalClicks = agg?.total || 0;
+        const uniqueClicks = agg?.uniqueIPs.size || 0;
+        const todayClicks = agg?.today || 0;
+        const yesterdayClicks = agg?.yesterday || 0;
+        const lastClickTime = agg?.lastClick || null;
+
         if (showLogs) {
-          console.log(`Link ${link.short_code}: total=${totalClicks}, unique=${uniqueClicks}, today=${todayClicks}, yesterday=${yesterdayClicks}`);
+          console.log(
+            `Link ${link.short_code}: total=${totalClicks}, unique=${uniqueClicks}, today=${todayClicks}, yesterday=${yesterdayClicks}`,
+          );
         }
-        
+
         return {
           ...link,
           total_clicks: totalClicks,
           unique_clicks: uniqueClicks,
           today_clicks: todayClicks,
           yesterday_clicks: yesterdayClicks,
-          last_click_time: lastClickTime
+          last_click_time: lastClickTime || undefined,
         };
-      }) || []);
+      });
 
       console.log('🔗📊 Processed links with updated counts:', processedLinks.map(l => `${l.short_code}: ${l.total_clicks}/${l.unique_clicks}`));
       
@@ -236,8 +262,6 @@ export const useLinks = () => {
         console.log('Processed links:', processedLinks);
       }
       setLinks(processedLinks);
-      // Determine if more pages are available by checking if we got a full page
-      setHasMore((linksData?.length || 0) === pageSize);
       console.log('🔗✅ Links state updated with new counts');
       
       // Force a re-render to ensure UI updates
@@ -451,7 +475,7 @@ export const useLinks = () => {
     // Auto-refresh every 60 seconds to ensure data stays current
     const refreshInterval = setInterval(() => {
       console.log('🔄 Auto-refreshing links data...');
-      fetchLinks(false, 1); // Refresh first page
+      fetchLinks(false, 1);
       setLastRefresh(Date.now());
     }, 60000);
     
@@ -461,17 +485,8 @@ export const useLinks = () => {
     };
   }, []);
 
-  const nextPage = async () => {
-    const next = page + 1;
-    setPage(next);
-    await fetchLinks(false, next);
-  };
-
-  const prevPage = async () => {
-    const prev = Math.max(1, page - 1);
-    setPage(prev);
-    await fetchLinks(false, prev);
-  };
+  const nextPage = async () => {};
+  const prevPage = async () => {};
 
   return {
     links,

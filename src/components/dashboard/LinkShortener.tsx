@@ -885,8 +885,7 @@ const LinkShortener = () => {
           onRefresh={refreshLinks}
         />
 
-        {/* Keep the page height sane on mobile by scrolling the list */}
-        <div className="max-h-[70vh] overflow-y-auto divide-y divide-card-border sm:max-h-none sm:overflow-visible">
+        <div className="divide-y divide-card-border">
           {filteredLinks.length === 0 ? (
             <div className="p-8 text-center">
               <LinkIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" />

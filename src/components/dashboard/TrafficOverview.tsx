@@ -13,7 +13,9 @@ const TrafficOverview = () => {
   // Set to current month for real data
   const now = new Date();
   // Default to last 15 days
-  const [startDate, setStartDate] = useState<Date>(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 14));
+  const [startDate, setStartDate] = useState(
+  new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)
+);
   const [endDate, setEndDate] = useState<Date>(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
